@@ -1,0 +1,26 @@
+# OS / editors
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+# Secrets and local config: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# JVM / Gradle / Maven
+.gradle/
+build/
+target/
+out/
+*.class
+*.log
+
+# Node / frontend
+node_modules/
+dist/
+coverage/
+npm-debug.log*
