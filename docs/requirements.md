@@ -1,6 +1,16 @@
 # Requirements and Assumptions
 
-This is a living document. Each requirement from the brief is refined into concrete behaviour, and every assumption is stated explicitly.
+This is a living document. Each requirement is refined into concrete behaviour, and every assumption is stated explicitly.
+
+## Interface
+
+**Assumptions:**
+- The task is to build the Music Metadata Service. 
+- In a streaming platform, the homepage and apps are the service’s clients: for example, the homepage shows Artist of the Day by calling GET /api/v1/artists/of-the-day. 
+- A separate web front end isn’t part of this solution, but every user story below can be tried in Swagger UI.
+- Who can read and write
+  - **Anyone can read and edit.** The service does not implement authentication or authorisation.
+  - In production, the service sits behind an API gateway and identity provider that authenticate callers and authorize specific roles to perform specific actions (RBAC).
 
 ## Functional requirements
 
@@ -24,7 +34,7 @@ A track is credited to **one or more** artists, and an artist can be credited on
 | Behaviour | Rule |
 |---|---|
 | Roles | Each credit has a role: `PRIMARY` (main billed artist) or `FEATURED` (guest appearance). |
-| Primary artist | Every track has **at least one** `PRIMARY` artist. Several primaries are allowed (for example a duet). |
+| Primary artist | Every track has **at least one** `PRIMARY` artist. |
 | Credit order | Credits keep their order, so a track displays as "Lady Gaga & Bradley Cooper" and not the reverse. |
 | No duplicates | An artist appears at most once in a track's credits. |
 | Fetch artist tracks | Returns every track the artist is credited on, with the artist's role on each. |
@@ -35,7 +45,7 @@ A track is credited to **one or more** artists, and an artist can be credited on
 |---|---|---|
 | `title` | Yes | 1–500 characters, trimmed. |
 | `durationMs` | Yes | Positive integer, in milliseconds. Formatted (for example "3:45") only for display. |
-| `genre` | Yes | Exactly one genre, from a fixed reference list. |
+| `genreId` | Yes | Exactly one genre, chosen from a fixed reference list of genres (each with an id and a unique name). |
 | `releaseDate` | No | Calendar date. |
 | `explicit` | Yes | Boolean, defaults to `false`. |
 | `isrc` | No | 12-character ISRC format. Unique across all tracks when present, to prevent duplicates. |
@@ -44,21 +54,15 @@ A track is identified by its own `track_id`. ISRC is not used as the identity, b
 
 ### FR-4: Create artist
 
-The brief has no "create artist" feature, but adding a track to an artist (FR-2) and editing an artist's name (FR-1) both need the artist to exist first.
+Artist need to exist first for adding a track to an artist (FR-2) and editing an artist's name (FR-1).
 
-| Behaviour | Rule |
-|---|---|
-| Create | An artist is created with a name only (same validation as a rename). It starts with no aliases and no tracks. |
+| Behaviour | Rule                                                                                                                    |
+|---|-------------------------------------------------------------------------------------------------------------------------|
+| Create | An artist is created with a name only (same validation as a rename). It starts with no aliases and no tracks.           |
 | Identity | The system assigns the `artist_id`. Names are not unique, so creating a second artist with an existing name is allowed. |
-| Seed data | A small seed dataset of artists and tracks is loaded on first start, so the UI and Artist of the Day have data straight away. |
+| Seed data | A small seed dataset of artists and tracks is loaded on first start, so the endpoints have some data straight away.     |
 
-### FR-5: Who can read and write (assumption)
-
-**Anyone can read and edit.** The service does not implement authentication or authorisation.
-
-**Assumption:** in production, the service sits behind an API gateway and identity provider that authenticate callers. Reads (fetch artist tracks, Artist of the Day) would stay public; writes (create artist, rename artist, add track) would require a catalogue-editor role.
-
-### FR-6: Artist of the Day
+### FR-5: Artist of the Day
 
 Every day, one artist is featured. Artists take turns like a queue, so everyone gets a turn before anyone gets a second one.
 
@@ -84,8 +88,9 @@ Not built, by decision, to keep it simple and stay within the time box:
 - Adding or removing aliases directly (aliases come only from renames)
 - Search, including search by alias
 - Albums and releases
-- Authentication and authorisation (see FR-5)
+- Authentication and authorisation
 - Playback, user accounts, playlists and recommendations
+- A separate web front end 
 
 ## Non-functional requirements
 

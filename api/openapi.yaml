@@ -1,0 +1,745 @@
+openapi: 3.0.3
+info:
+  title: Music Metadata API
+  version: 1.0.0
+  description: |
+    Stores and serves metadata about artists and tracks for a music streaming
+    platform.
+servers:
+  - url: /api/v1
+
+security: []
+
+tags:
+  - name: Artists
+    description: Create, find and rename artists, list their tracks, and get today's Artist of the Day.
+  - name: Tracks
+    description: Add tracks credited to one or more artists, and read them back.
+  - name: Genres
+    description: The fixed list of genres a track can have.
+
+paths:
+  /artists:
+    get:
+      tags: [Artists]
+      operationId: listArtists
+      summary: List artists
+      description: |
+        Returns a page of artists, ordered by `artistId` (the order they were
+        added). Use it to find the `artistId` of an artist.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of artists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistPage'
+              example:
+                page: 0
+                size: 3
+                totalElements: 8
+                totalPages: 3
+                content:
+                  - { artistId: 1, name: Nova Lane }
+                  - { artistId: 2, name: The Midnight Owls }
+                  - { artistId: 3, name: Kairo }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Artists]
+      operationId: createArtist
+      summary: Create an artist
+      description: |
+        Adds an artist to the catalogue. Names don't have to be unique: two
+        different artists can share a name. The artist joins the end of the
+        Artist of the Day rotation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateArtistRequest'
+            example:
+              name: Aurora Fields
+      responses:
+        '201':
+          description: Artist created.
+          headers:
+            Location:
+              description: URL of the new artist.
+              schema:
+                type: string
+                example: http://localhost:8080/api/v1/artists/9
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artist'
+              example:
+                artistId: 9
+                name: Aurora Fields
+                aliases: []
+                version: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /artists/{artistId}:
+    parameters:
+      - $ref: '#/components/parameters/ArtistId'
+    get:
+      tags: [Artists]
+      operationId: getArtist
+      summary: Get an artist, including aliases
+      description: |
+        Returns the artist's current name and their aliases (oldest first),
+      responses:
+        '200':
+          description: The artist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artist'
+              example:
+                artistId: 3
+                name: Kairo
+                aliases:
+                  - { name: DJ Kairo }
+                version: 0
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Artists]
+      operationId: renameArtist
+      summary: Rename an artist
+      description: |
+        Edit an artist's name to accommodate aliases.
+
+        Sets a new name and keeps the previous name as an alias, so the artist
+        stays findable under every name. If the new name is already one of the
+        artist's aliases, the two swap: the current name never also appears as
+        an alias. A change of letter case only isn't kept as an alias.
+
+        Send the `version` from your last read of the artist. If someone else
+        changed the artist since, the rename is rejected with `409 Conflict`
+        instead of overwriting their change: read the artist again and retry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameArtistRequest'
+            example:
+              name: Kairo Beats
+              version: 0
+      responses:
+        '200':
+          description: The renamed artist, with its new `version`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artist'
+              example:
+                artistId: 3
+                name: Kairo Beats
+                aliases:
+                  - { name: DJ Kairo }
+                  - { name: Kairo }
+                version: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /artists/{artistId}/tracks:
+    parameters:
+      - $ref: '#/components/parameters/ArtistId'
+    get:
+      tags: [Artists]
+      operationId: listArtistTracks
+      summary: List the tracks an artist is credited on
+      description: |
+        Fetch all tracks associated with a specific artist.
+
+        Returns a page of every track the artist is credited on, whether as a
+        primary or a featured artist, ordered by `trackId`. `role` is this
+        artist's role on each track; `artists` lists every credit in credit
+        order.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of the artist's tracks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistTrackPage'
+              example:
+                page: 0
+                size: 20
+                totalElements: 3
+                totalPages: 1
+                content:
+                  - trackId: 5
+                    title: Low Frequency
+                    durationMs: 187000
+                    genre: { genreId: 4, name: Electronic }
+                    releaseDate: '2025-01-20'
+                    explicit: true
+                    role: PRIMARY
+                    artists:
+                      - { artistId: 3, name: Kairo, role: PRIMARY }
+                  - trackId: 6
+                    title: Afterglow Theory
+                    durationMs: 301000
+                    genre: { genreId: 4, name: Electronic }
+                    explicit: false
+                    role: PRIMARY
+                    artists:
+                      - { artistId: 3, name: Kairo, role: PRIMARY }
+                      - { artistId: 6, name: Luna Vega, role: FEATURED }
+                  - trackId: 10
+                    title: Velvet Static
+                    durationMs: 205000
+                    genre: { genreId: 6, name: Hip-Hop }
+                    releaseDate: '2025-02-28'
+                    explicit: true
+                    role: FEATURED
+                    artists:
+                      - { artistId: 7, name: Static Bloom, role: PRIMARY }
+                      - { artistId: 3, name: Kairo, role: FEATURED }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tracks:
+    post:
+      tags: [Tracks]
+      operationId: createTrack
+      summary: Add a track
+      description: |
+        Add a new track to an artist's catalogue.
+
+        A track is credited to one or more artists. The order of `artists` is
+        the credit order. At least one credit must be `PRIMARY`, and an artist can appear only once.
+
+        `genreId` comes from `GET /genres`; `artistId`s from `GET /artists`.
+        `isrc` is optional, but unique when given: adding a second track with
+        the same ISRC is rejected with `409`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrackRequest'
+            examples:
+              duet:
+                summary: A duet (two primary artists)
+                value:
+                  title: Northern Lights
+                  durationMs: 242000
+                  genreId: 11
+                  releaseDate: '2026-10-01'
+                  artists:
+                    - { artistId: 6, role: PRIMARY }
+                    - { artistId: 1, role: PRIMARY }
+              featured:
+                summary: A featured artist, with an ISRC
+                value:
+                  title: Night Drive
+                  durationMs: 198000
+                  genreId: 4
+                  explicit: true
+                  isrc: QZABC2600001
+                  artists:
+                    - { artistId: 3, role: PRIMARY }
+                    - { artistId: 6, role: FEATURED }
+      responses:
+        '201':
+          description: Track created.
+          headers:
+            Location:
+              description: URL of the new track.
+              schema:
+                type: string
+                example: http://localhost:8080/api/v1/tracks/11
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+              example:
+                trackId: 11
+                title: Northern Lights
+                durationMs: 242000
+                genre: { genreId: 11, name: Pop }
+                releaseDate: '2026-10-01'
+                explicit: false
+                artists:
+                  - { artistId: 6, name: Luna Vega, role: PRIMARY }
+                  - { artistId: 1, name: Nova Lane, role: PRIMARY }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: A track with this ISRC already exists.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: about:blank
+                title: Conflict
+                status: 409
+                detail: A track with ISRC QZABC2600001 already exists.
+                instance: /api/v1/tracks
+
+  /tracks/{trackId}:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    get:
+      tags: [Tracks]
+      operationId: getTrack
+      summary: Get a track, including its credited artists
+      description: |
+        Returns all the details of the track.
+      responses:
+        '200':
+          description: The track.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+              example:
+                trackId: 9
+                title: Two Lanterns
+                durationMs: 233000
+                genre: { genreId: 11, name: Pop }
+                releaseDate: '2025-06-12'
+                explicit: false
+                artists:
+                  - { artistId: 6, name: Luna Vega, role: PRIMARY }
+                  - { artistId: 1, name: Nova Lane, role: PRIMARY }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /artists/of-the-day:
+    get:
+      tags: [Artists]
+      operationId: getArtistOfTheDay
+      summary: Get today's Artist of the Day
+      description: |
+        See a different Artist of the Day on the homepage each
+        day, in a fair rotation through the whole catalogue.
+
+        Every user gets the same artist for the whole UTC day. Artists take
+        turns in the order they were added; after the last artist the rotation
+        starts again with the first. A newly added artist joins the end of the
+        rotation, so nobody already waiting is skipped.
+
+        The response can be cached until midnight UTC, when the next artist
+        takes over.
+      responses:
+        '200':
+          description: Today's artist.
+          headers:
+            Cache-Control:
+              description: Cacheable until the next midnight UTC.
+              schema:
+                type: string
+                example: max-age=3600, public
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistOfTheDay'
+              example:
+                date: '2026-10-18'
+                artist: { artistId: 1, name: Nova Lane }
+        '204':
+          description: There are no artists yet, so there is no Artist of the Day.
+
+  /genres:
+    get:
+      tags: [Genres]
+      operationId: listGenres
+      summary: List all genres
+      description: The genres a track can have. Use a `genreId` when adding a track.
+      responses:
+        '200':
+          description: All genres, ordered by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Genre'
+              example:
+                - { genreId: 1, name: Blues }
+                - { genreId: 2, name: Classical }
+                - { genreId: 11, name: Pop }
+
+components:
+  parameters:
+    ArtistId:
+      name: artistId
+      in: path
+      required: true
+      description: The artist's id, as returned by `GET /artists`.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 3
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      description: The track's id.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 9
+    Page:
+      name: page
+      in: query
+      description: Zero-based page number.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Page size, from 1 to 100.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: The request is invalid. `errors` lists each invalid field.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: Request validation failed.
+            instance: /api/v1/tracks
+            errors:
+              - { field: durationMs, message: must be greater than or equal to 1 }
+    NotFound:
+      description: The resource doesn't exist.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: Artist 999 doesn't exist.
+            instance: /api/v1/artists/999
+    Conflict:
+      description: The resource was changed by someone else since it was read.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: about:blank
+            title: Conflict
+            status: 409
+            detail: Artist 3 has changed since version 0 (current version 1). Reload it and try again.
+            instance: /api/v1/artists/3
+
+  schemas:
+    ArtistName:
+      type: string
+      minLength: 1
+      maxLength: 500
+      description: Surrounding whitespace is trimmed.
+      example: Kairo
+
+    ArtistSummary:
+      type: object
+      required: [artistId, name]
+      properties:
+        artistId:
+          type: integer
+          format: int64
+          example: 3
+        name:
+          $ref: '#/components/schemas/ArtistName'
+
+    Artist:
+      type: object
+      required: [artistId, name, aliases, version]
+      properties:
+        artistId:
+          type: integer
+          format: int64
+          example: 3
+        name:
+          $ref: '#/components/schemas/ArtistName'
+        aliases:
+          type: array
+          description: Previous names, oldest first. Added automatically on rename.
+          items:
+            $ref: '#/components/schemas/ArtistAlias'
+        version:
+          type: integer
+          format: int32
+          description: Incremented on every change. Send it back when renaming, for conflict detection.
+          example: 0
+
+    CreateArtistRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          $ref: '#/components/schemas/ArtistName'
+
+    RenameArtistRequest:
+      type: object
+      required: [name, version]
+      properties:
+        name:
+          $ref: '#/components/schemas/ArtistName'
+        version:
+          type: integer
+          format: int32
+          description: The `version` from your last read of the artist.
+          example: 0
+
+    ArtistAlias:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: DJ Kairo
+
+    ArtistPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMetadata'
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistSummary'
+
+    Genre:
+      type: object
+      required: [genreId, name]
+      properties:
+        genreId:
+          type: integer
+          format: int64
+          example: 11
+        name:
+          type: string
+          example: Pop
+
+    Role:
+      type: string
+      enum: [PRIMARY, FEATURED]
+      description: |
+        `PRIMARY` is a main billed artist; `FEATURED` is a guest appearance.
+
+    TrackCreditRequest:
+      type: object
+      required: [artistId, role]
+      properties:
+        artistId:
+          type: integer
+          format: int64
+          example: 3
+        role:
+          $ref: '#/components/schemas/Role'
+
+    TrackCredit:
+      type: object
+      required: [artistId, name, role]
+      properties:
+        artistId:
+          type: integer
+          format: int64
+          example: 3
+        name:
+          $ref: '#/components/schemas/ArtistName'
+        role:
+          $ref: '#/components/schemas/Role'
+
+    CreateTrackRequest:
+      type: object
+      required: [title, durationMs, genreId, artists]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: Shallow
+        durationMs:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Length in milliseconds.
+          example: 215000
+        genreId:
+          type: integer
+          format: int64
+          example: 3
+        releaseDate:
+          type: string
+          format: date
+          example: '2018-09-27'
+        explicit:
+          type: boolean
+          default: false
+        isrc:
+          type: string
+          pattern: '^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$'
+          description: International Standard Recording Code. Unique across all tracks when present.
+          example: QZABC2600001
+        artists:
+          type: array
+          minItems: 1
+          description: Credits in display order. At least one must be `PRIMARY`.
+          items:
+            $ref: '#/components/schemas/TrackCreditRequest'
+
+    Track:
+      type: object
+      required: [trackId, title, durationMs, genre, explicit, artists]
+      properties:
+        trackId:
+          type: integer
+          format: int64
+          example: 42
+        title:
+          type: string
+          example: Shallow
+        durationMs:
+          type: integer
+          format: int32
+          example: 215000
+        genre:
+          $ref: '#/components/schemas/Genre'
+        releaseDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2018-09-27'
+        explicit:
+          type: boolean
+          example: false
+        isrc:
+          type: string
+          nullable: true
+          example: QZABC2600001
+        artists:
+          type: array
+          description: All credits, in credit order.
+          items:
+            $ref: '#/components/schemas/TrackCredit'
+
+    ArtistTrack:
+      allOf:
+        - $ref: '#/components/schemas/Track'
+        - type: object
+          required: [role]
+          properties:
+            role:
+              $ref: '#/components/schemas/Role'
+
+    ArtistTrackPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMetadata'
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistTrack'
+
+    ArtistOfTheDay:
+      type: object
+      required: [date, artist]
+      properties:
+        date:
+          type: string
+          format: date
+          description: The UTC day.
+          example: '2026-10-17'
+        artist:
+          $ref: '#/components/schemas/ArtistSummary'
+
+    PageMetadata:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page:
+          type: integer
+          format: int32
+          example: 0
+        size:
+          type: integer
+          format: int32
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          example: 1
+        totalPages:
+          type: integer
+          format: int32
+          example: 1
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 Problem Details.
+      properties:
+        type:
+          type: string
+          format: uri
+          example: about:blank
+        title:
+          type: string
+          example: Bad Request
+        status:
+          type: integer
+          format: int32
+          example: 400
+        detail:
+          type: string
+          example: Request validation failed.
+        instance:
+          type: string
+          example: /api/v1/tracks
+        errors:
+          type: array
+          description: Field-level validation errors, for 400 responses.
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                example: durationMs
+              message:
+                type: string
+                example: must be greater than or equal to 1

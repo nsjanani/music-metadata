@@ -2,7 +2,17 @@
 .DS_Store
 .idea/
 *.iml
+*.iws
+*.ipr
 .vscode/
+# IDE / Spring Tools
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated
+.sts4-cache/
+.editorconfig
 
 # Secrets and local config: never commit these
 .env
@@ -11,16 +21,8 @@
 *.pem
 *.key
 
-# JVM / Gradle / Maven
-.gradle/
-build/
+# Maven build output
 target/
-out/
+.mvn/wrapper/maven-wrapper.jar
 *.class
 *.log
-
-# Node / frontend
-node_modules/
-dist/
-coverage/
-npm-debug.log*
