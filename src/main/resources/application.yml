@@ -1,0 +1,49 @@
+# Base configuration. Safe for production by default:
+# no demo data, JSON logs, and no database credentials (they come from environment variables:
+# SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD).
+spring:
+  application:
+    name: music-metadata
+  datasource:
+    hikari:
+      data-source-properties:
+        connectionTimeZone: UTC
+        forceConnectionTimeZoneToSession: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  liquibase:
+    # Always set a context: if none is set, Liquibase runs every changeset, including demo data.
+    contexts: production
+
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
+    # http://localhost:8080/ opens Swagger UI.
+    use-root-path: true
+    try-it-out-enabled: true
+    operations-sorter: none
+    tags-sorter: none
+    doc-expansion: list
+    display-request-duration: true
+    default-models-expand-depth: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ecs
