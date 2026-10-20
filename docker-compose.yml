@@ -1,0 +1,43 @@
+# Local environment.
+#   docker compose up --build    the whole system (MySQL + API on http://localhost:8080)
+#   docker compose up -d mysql   only MySQL, when running the API from the IDE
+# Credentials here are for local use only; production credentials come from environment variables.
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: music_metadata
+      MYSQL_USER: music_metadata
+      MYSQL_PASSWORD: music_metadata
+      MYSQL_ROOT_PASSWORD: root
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_as_ci
+      - --default-time-zone=+00:00
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: .
+    image: music-metadata:local
+    # Runs the production configuration (JSON logs), configured through environment variables as in production.
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/music_metadata
+      SPRING_DATASOURCE_USERNAME: music_metadata
+      SPRING_DATASOURCE_PASSWORD: music_metadata
+      SPRING_LIQUIBASE_CONTEXTS: demo
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
