@@ -20,6 +20,12 @@ Run the whole system with Docker (no JDK needed):
 docker compose up --build
 ```
 
+To build the image on its own:
+
+```bash
+docker build -t music-metadata .
+```
+
 Then open http://localhost:8080/ to browse and try the API in Swagger UI. Demo artists and tracks are loaded on first start, and every example in the API documentation works against them.
 
 ## Repository layout
@@ -42,16 +48,6 @@ The API is designed first, in `api/openapi.yaml`. The build generates the API in
 - **Docker** (local MySQL, and the integration tests)
 
 Maven doesn't need to be installed: use the wrapper, `./mvnw`.
-
-## Run in Docker
-
-`docker compose up --build` runs MySQL and the API together, with the production configuration (JSON logs) and demo data. Stop the API first if it's already running from the IDE: both use port 8080.
-
-To build the image on its own:
-
-```bash
-docker build -t music-metadata .
-```
 
 ## Test
 
