@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - include:
+      file: changes/001-create-schema.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/002-genres.sql
+      relativeToChangelogFile: true
+  # Demo data: only applied when the "demo" context is active.
+  - include:
+      file: changes/003-demo-seed-data.sql
+      relativeToChangelogFile: true
+      context: demo
