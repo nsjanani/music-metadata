@@ -51,20 +51,6 @@ Start MySQL:
 docker compose up -d mysql
 ```
 
-Then start the API with the `local` profile, which connects to that MySQL and loads demo data:
-
-```bash
-SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
-```
-
-| URL | What |
-|---|---|
-| http://localhost:8080/ | Swagger UI: browse and try the API. Every example works against the demo data. |
-| http://localhost:8080/api/v1/artists/of-the-day | Today's Artist of the Day |
-| http://localhost:8080/api/v1/artists | Artists (paged) |
-| http://localhost:8080/openapi.yaml | The API contract |
-| http://localhost:8080/actuator/health | Health, plus `/liveness` and `/readiness` probes |
-
 MySQL is exposed on port **3307** 
 User and password: `music_metadata` / `music_metadata`.
 
@@ -80,39 +66,11 @@ To build the image on its own:
 docker build -t music-metadata .
 ```
 
-The image is multi-stage: a JDK stage builds the app, and the runtime image contains only a JRE and the app, split into layers so a code change only rebuilds the last one. It runs as a non-root user.
-
 ## Test
 
 ```bash
 ./mvnw verify
 ```
-
-runs every test. There are two kinds:
-
-| Kind | Naming | Runs in | Needs Docker | What it checks |
-|---|---|---|---|---|
-| Unit and slice tests | `*Test` | `./mvnw test` (fast) | No | Services' business rules with mocked repositories; mappers; each controller's HTTP contract with mocked services (`@WebMvcTest`) |
-| Integration tests | `*IT` | `./mvnw verify` | Yes | The whole application against a real, throwaway MySQL 8.4 (Testcontainers): business rules, SQL, constraints, concurrency |
-
-Integration tests always use the base (production) configuration, whatever profile your shell or IDE sets.
-
-## Configuration
-
-The base configuration is production-safe: no credentials, no demo data, JSON logs. Supply the database through environment variables:
-
-| Variable | Example |
-|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:mysql://db.example.internal:3306/music_metadata` |
-| `SPRING_DATASOURCE_USERNAME` | `music_metadata` |
-| `SPRING_DATASOURCE_PASSWORD` | from your secret store |
-
-The schema is created and migrated automatically at startup by Liquibase. All dates and times are UTC.
-
-| Profile | Purpose |
-|---|---|
-| _(none)_ | Production: JSON logs, no demo data |
-| `local` | Local development: compose MySQL, demo data, readable logs |
 
 ## Working in IntelliJ IDEA
 
