@@ -43,19 +43,6 @@ The API is designed first, in `api/openapi.yaml`. The build generates the API in
 
 Maven doesn't need to be installed: use the wrapper, `./mvnw`.
 
-## Run locally
-
-Start MySQL:
-
-```bash
-docker compose up -d mysql
-```
-
-MySQL is exposed on port **3307** 
-User and password: `music_metadata` / `music_metadata`.
-
-`docker compose stop` stops MySQL and keeps the data; `docker compose down -v` deletes it.
-
 ## Run in Docker
 
 `docker compose up --build` runs MySQL and the API together, with the production configuration (JSON logs) and demo data. Stop the API first if it's already running from the IDE: both use port 8080.
